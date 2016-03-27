@@ -3,6 +3,10 @@ package nz.rd.lang18
 import org.parboiled2._
 
 class Parser(val input: ParserInput) extends org.parboiled2.Parser {
+  def program: Rule1[AST] = block
+  def block: Rule1[Block] = rule {
+    zeroOrMore(print).separatedBy("\n") ~> ((s: Seq[Print]) => Block(s.toList))
+  }
   def print: Rule1[Print] = rule { "print" ~ " " ~ str ~> ((s: Str) => Print(s)) }
   def expr: Rule1[AST] = rule { str | inr }
   def str: Rule1[Str] = {

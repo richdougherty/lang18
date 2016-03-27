@@ -1,11 +1,12 @@
 package nz.rd.lang18
 
-object Interpreter {
+final object Interpreter {
   def interpret(ast: AST): Unit = ast match {
     case Print(expr) => evaluate(expr) match {
       case Value.Inr(value) => println(value)
       case Value.Str(value) => println(value)
     }
+    case Block(children: List[AST]) => children.foreach(interpret(_))
   }
 
   private def evaluate(expr: AST): Value = expr match {

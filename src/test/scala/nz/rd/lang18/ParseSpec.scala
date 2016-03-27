@@ -11,6 +11,11 @@ class ParseSpec extends FreeSpec with Matchers {
       val ast = parser.print.run().get
       assert(ast === Print(Str("Hello")))
     }
+    "should handle multiple lines" in {
+      val parser = new Parser("print 'Hello'\nprint 'Goodbye'")
+      val ast = parser.block.run().get
+      assert(ast === Block(List(Print(Str("Hello")), Print(Str("Goodbye")))))
+    }
   }
 
 }
