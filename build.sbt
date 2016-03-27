@@ -1,0 +1,5 @@
+name := "lang18"
+organization := "nz.rd.lang18"
+scalaVersion := "2.11.8"
+libraryDependencies += "org.parboiled" %% "parboiled" % "2.1.2"
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
