@@ -22,6 +22,9 @@ class InterpreterSpec extends FreeSpec with Matchers {
     "should handle conditions" in {
       assert(interpret("if true { 'true' } else { 'false' }") === Success(Interpreter.Value.Str("true")))
     }
+    "should handle variables" in {
+      assert(interpret("var i = 1\ni") === Success(Interpreter.Value.Inr(1)))
+    }
   }
 
 }
