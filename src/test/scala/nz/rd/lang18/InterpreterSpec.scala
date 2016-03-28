@@ -10,18 +10,17 @@ class InterpreterSpec extends FreeSpec with Matchers {
     "should handle hello world" in {
       val parser = new Parser("print 'Hello'")
       val ast = parser.print.run().get
-      assert(Interpreter.interpret(ast) === ())
+      assert(Interpreter.interpret(ast) === Interpreter.Value.Unt)
     }
     "should handle multiple lines" in {
       val parser = new Parser("print 'Hello'\nprint 'Goodbye'")
       val ast = parser.program.run().get
-      assert(Interpreter.interpret(ast) === ())
+      assert(Interpreter.interpret(ast) === Interpreter.Value.Unt)
     }
     "should handle conditions" in {
-      val parser = new Parser("if true { print 'true' } else { print 'false' }")
+      val parser = new Parser("if true { 'true' } else { 'false' }")
       val ast = parser.program.run()
-
-      assert(ast.map(Interpreter.interpret(_)) === Success(()))
+      assert(ast.map(Interpreter.interpret(_)) === Success(Interpreter.Value.Str("true")))
     }
   }
 

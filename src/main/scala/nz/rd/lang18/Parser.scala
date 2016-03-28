@@ -18,7 +18,12 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   def cond: Rule1[Cond] = rule {
     "if " ~ ast ~ " " ~ block ~ " else " ~ block ~> Cond
   }
-  def ast: Rule1[AST] = rule { str | inr | bool | print | cond }
+  def ast: Rule1[AST] = rule {
+    str | inr | bool |
+    block | `var` | cond |
+    print |
+    symbol
+  }
   def bool: Rule1[Bool] = rule { "true" ~ push(Bool(true)) | "false" ~ push(Bool(false)) }
   def str: Rule1[Str] = {
     def str0: Rule1[Str] = rule { capture(zeroOrMore(CharPredicate.Alpha)) ~> Str }
@@ -28,5 +33,11 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   }
   def inr: Rule1[Inr] = rule {
     capture(oneOrMore(CharPredicate.Digit)) ~> ((digits: String) => Inr(Integer.parseInt(digits)))
+  }
+  def `var`: Rule1[Var] = rule {
+    "var " ~ capture(oneOrMore(CharPredicate.Alpha)) ~ " = " ~ ast ~> Var
+  }
+  def symbol: Rule1[Symbol] = rule {
+    capture(oneOrMore(CharPredicate.Alpha)) ~> Symbol
   }
 }
