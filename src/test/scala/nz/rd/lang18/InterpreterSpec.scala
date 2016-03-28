@@ -2,25 +2,25 @@ package nz.rd.lang18
 
 import collection.mutable.Stack
 import org.scalatest._
-import scala.util.Success
+import scala.util.{Success, Try}
 
 class InterpreterSpec extends FreeSpec with Matchers {
 
+  def interpret(program: String): Try[Interpreter.Value] = {
+    val parser = new Parser(program)
+    val parse: Try[AST] = parser.program.run()
+    parse.map(Interpreter.interpret(_))
+  }
+
   "Interpreting" - {
     "should handle hello world" in {
-      val parser = new Parser("print 'Hello'")
-      val ast = parser.print.run().get
-      assert(Interpreter.interpret(ast) === Interpreter.Value.Unt)
+      assert(interpret("print 'Hello'") === Success(Interpreter.Value.Unt))
     }
     "should handle multiple lines" in {
-      val parser = new Parser("print 'Hello'\nprint 'Goodbye'")
-      val ast = parser.program.run().get
-      assert(Interpreter.interpret(ast) === Interpreter.Value.Unt)
+      assert(interpret("print 'Hello'\nprint 'Goodbye'") === Success(Interpreter.Value.Unt))
     }
     "should handle conditions" in {
-      val parser = new Parser("if true { 'true' } else { 'false' }")
-      val ast = parser.program.run()
-      assert(ast.map(Interpreter.interpret(_)) === Success(Interpreter.Value.Str("true")))
+      assert(interpret("if true { 'true' } else { 'false' }") === Success(Interpreter.Value.Str("true")))
     }
   }
 
