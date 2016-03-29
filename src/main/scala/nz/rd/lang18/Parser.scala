@@ -30,22 +30,22 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   //// astUnit - ASTs that evaluate to unit so won't have any suffix ////
 
   def astUnit: Rule1[AST] = rule {
-    `var` | print | astSuffix
+    print | astSuffix
   }
 
-  def `var`: Rule1[Var] = rule {
-    "var " ~ ident ~ " = " ~ ast ~> Var
-  }
   def print: Rule1[Print] = rule { "print " ~ ast ~> ((a: AST) => Print(a)) }
 
   //// astSuffix - ASTs that begin with another AST ////
 
   def astSuffix: Rule1[AST] = {
     rule {
-      add | call | astSimple
+      assign | add | call | astSimple
     }
   }
 
+  def assign: Rule1[Assign] = rule {
+    astSimple ~ " = " ~ ast ~> Assign
+  }
   def add: Rule1[Add] = rule {
     astSimple ~ " + " ~ ast ~> Add
   }
@@ -61,7 +61,7 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
       // Literals
       str | inr | bool |
       // Reserved words
-      block | func | cond |
+      block | func | cond | `var` |
       // Symbol
       symbol
     }
@@ -90,6 +90,9 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   }
   def func: Rule1[Func] = rule {
     "def " ~ ident ~ tup ~ " " ~ block ~> Func
+  }
+  def `var`: Rule1[Var] = rule {
+    "var " ~ astSimple ~> Var
   }
 
   // Non-AST rules

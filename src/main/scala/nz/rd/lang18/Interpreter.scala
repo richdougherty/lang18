@@ -25,12 +25,8 @@ final object Interpreter {
         case Value.Bool(true) => interpret0(t, scope)
         case Value.Bool(false) => interpret0(f, scope)
       }
-    case AST.Var(name, rhs) =>
-      val (value, bindings) = bind(AST.Symbol(name), rhs, scope)
-      for (b <- bindings.keys) {
-        assert(!scope.bindings.contains(b), s"$b already bound")
-      }
-      scope.bindings ++= bindings
+    case AST.Assign(lhs, rhs) =>
+      val value = bind(lhs, rhs, scope.createChild, scope, BindMode.Assign)
       Value.Unt
     case AST.Func(name, args, body) =>
       val func = Value.Func(args, body, scope)
@@ -38,9 +34,8 @@ final object Interpreter {
       func
     case call: AST.Call =>
       val func = interpret0(call.lhs, scope).asInstanceOf[Value.Func]
-      val (argsValue, argsBindings) = bind(func.args, call.args, scope)
       val callScope = func.lexScope.createChild
-      callScope.bindings ++= argsBindings
+      val argsValue = bind(func.args, call.args, scope.createChild, callScope, BindMode.Var)
       interpret0(func.body, callScope)
     case AST.Tup(values) =>
       Value.Tup(values.map(interpret0(_, scope)))
@@ -59,19 +54,35 @@ final object Interpreter {
       Value.Str(value)
   }
 
-  private def bind(bindAst: AST, valueAst: AST, scope: Scope): (Value, mutable.Map[String,Value]) = {
-    val bindings = mutable.Map.empty[String,Value]
-    val value = bind0(bindAst, valueAst, scope.createChild, bindings)
-    (value, bindings)
+  // private def bind(bindAst: AST, valueAst: AST, scope: Scope): (Value, mutable.Map[String,Value]) = {
+  //   val bindings = mutable.Map.empty[String,Value]
+  //   val value = bind0(bindAst, valueAst, scope.createChild, bindings)
+  //   (value, bindings)
+  // }
+
+  private def bind(bindAst: AST, valueAst: AST, evalScope: Scope, bindScope: Scope, mode: BindMode): Value = bindAst match {
+    case AST.Var(varAst) =>
+      assert(mode != BindMode.Var, "var modifier is redundant")
+      bind(varAst, valueAst, evalScope, bindScope, BindMode.Var)
+    case AST.Symbol(name) =>
+      val value = interpret0(valueAst, evalScope)
+      mode match {
+        case BindMode.Var =>
+          assert(!bindScope.bindings.contains(name))
+          bindScope.bindings += (name -> value) // TODO: Use a mutable cell
+          evalScope.bindings += (name -> value)
+      }
+      value
+    case AST.Tup(bs) =>
+      val vs = valueAst.asInstanceOf[AST.Tup].values
+      Value.Tup((bs zip vs).map { case (b, v) => bind(b, v, evalScope, bindScope, mode) })
   }
 
-  private def bind0(bindAst: AST, valueAst: AST, evalScope: Scope, bindings: mutable.Map[String,Value]): Value = (bindAst, valueAst) match {
-    case (AST.Symbol(name), valueAst) =>
-      val value = interpret0(valueAst, evalScope)
-      bindings += (name -> value)
-      value
-    case (AST.Tup(bs), AST.Tup(vs)) =>
-      Value.Tup((bs zip vs).map { case (b, v) => bind0(b, v, evalScope, bindings) })
+  sealed trait BindMode
+  object BindMode {
+    final case object Assign extends BindMode
+    final case object Val extends BindMode
+    final case object Var extends BindMode
   }
 
   sealed trait Value

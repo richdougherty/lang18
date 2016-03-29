@@ -16,8 +16,8 @@ class ParseSpec extends FreeSpec with Matchers {
     }
     "should handle var declarations" in {
       val parser = new Parser("var x = 1")
-      val parse = parser.`var`.run()
-      assert(parse === Success(Var("x", Inr(1))))
+      val parse = parser.ast.run()
+      assert(parse === Success(Assign(Var(Symbol("x")), Inr(1))))
     }
     "should handle empty lines" in {
       val parser = new Parser("print 1\n\nprint 2\n\n")
