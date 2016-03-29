@@ -1,5 +1,6 @@
 package nz.rd.lang18
 
+import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 
 final object Interpreter {
@@ -26,7 +27,7 @@ final object Interpreter {
         case Value.Bool(false) => interpret0(f, scope)
       }
     case AST.Assign(lhs, rhs) =>
-      val value = bind(lhs, rhs, scope.createChild, scope, BindMode.Assign)
+      val value = bind(lhs, rhs, scope, BindMode.Assign)
       Value.Unt
     case AST.Func(name, args, body) =>
       val func = Value.Func(args, body, scope)
@@ -34,8 +35,9 @@ final object Interpreter {
       func
     case call: AST.Call =>
       val func = interpret0(call.lhs, scope).asInstanceOf[Value.Func]
-      val callScope = func.lexScope.createChild
-      val argsValue = bind(func.args, call.args, scope.createChild, callScope, BindMode.Var)
+      val evalScope = scope.createChild
+      val argsValue = bind(func.args, call.args, evalScope, BindMode.Val)
+      val callScope = Scope(evalScope.bindings, Some(scope)) // Copy new bindings into new call scope
       interpret0(func.body, callScope)
     case AST.Tup(values) =>
       Value.Tup(values.map(interpret0(_, scope)))
@@ -44,8 +46,15 @@ final object Interpreter {
         case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
       }
     case AST.Symbol(name) =>
-      assert(scope.bindings.contains(name), s"Variable $name not declared")
-      scope.bindings(name)
+      val optValue = scope.lookup(name)
+      assert(optValue.isDefined, s"Variable $name not declared")
+      @tailrec
+      def deref(v: Value): Value = v match {
+        case Value.Var(Some(newValue)) => deref(newValue)
+        case Value.Var(None) => sys.error(s"Var $name hasn't been set")
+        case _ => v
+      }
+      deref(optValue.get)
     case AST.Inr(value) =>
       Value.Inr(value)
     case AST.Bool(value) =>
@@ -54,28 +63,34 @@ final object Interpreter {
       Value.Str(value)
   }
 
-  // private def bind(bindAst: AST, valueAst: AST, scope: Scope): (Value, mutable.Map[String,Value]) = {
-  //   val bindings = mutable.Map.empty[String,Value]
-  //   val value = bind0(bindAst, valueAst, scope.createChild, bindings)
-  //   (value, bindings)
-  // }
-
-  private def bind(bindAst: AST, valueAst: AST, evalScope: Scope, bindScope: Scope, mode: BindMode): Value = bindAst match {
+  private def bind(bindAst: AST, valueAst: AST, scope: Scope, mode: BindMode): Value = bindAst match {
     case AST.Var(varAst) =>
       assert(mode != BindMode.Var, "var modifier is redundant")
-      bind(varAst, valueAst, evalScope, bindScope, BindMode.Var)
+      bind(varAst, valueAst, scope, BindMode.Var)
     case AST.Symbol(name) =>
-      val value = interpret0(valueAst, evalScope)
+      val value = interpret0(valueAst, scope)
       mode match {
         case BindMode.Var =>
-          assert(!bindScope.bindings.contains(name))
-          bindScope.bindings += (name -> value) // TODO: Use a mutable cell
-          evalScope.bindings += (name -> value)
+          assert(!scope.bindings.contains(name))
+          scope.bindings += (name -> Value.Var(Some(value))) // TODO: Use a mutable cell
+        case BindMode.Val =>
+          assert(!scope.bindings.contains(name))
+          scope.bindings += (name -> value) // TODO: Use a mutable cell
+        case BindMode.Assign =>
+          assert(scope.bindings.contains(name))
+          // Find the last var
+          @tailrec
+          def assignToVar(v: Value): Unit = v match {
+            case Value.Var(Some(v1@Value.Var(_))) => assignToVar(v1)
+            case v1@Value.Var(_) => v1.value = Some(value)
+            case _ => sys.error(s"$name is not a var so it can't be assigned")
+          }
+          assignToVar(scope.bindings(name))
       }
       value
     case AST.Tup(bs) =>
       val vs = valueAst.asInstanceOf[AST.Tup].values
-      Value.Tup((bs zip vs).map { case (b, v) => bind(b, v, evalScope, bindScope, mode) })
+      Value.Tup((bs zip vs).map { case (b, v) => bind(b, v, scope, mode) })
   }
 
   sealed trait BindMode
@@ -89,6 +104,7 @@ final object Interpreter {
   object Value {
     final case object Unt extends Value
     final case class Inr(value: Int) extends Value
+    final case class Var(var value: Option[Value]) extends Value
     final case class Str(value: String) extends Value
     final case class Tup(values: immutable.Seq[Value]) extends Value
     final case class Bool(value: Boolean) extends Value
@@ -99,6 +115,10 @@ final object Interpreter {
 
   final case class Scope(bindings: mutable.Map[String,Value], parent: Option[Scope]) {
     def createChild: Scope = Scope(mutable.Map.empty, Some(this))
+    def lookup(name: String): Option[Value] = {
+      bindings.get(name) orElse { parent.flatMap(_.lookup(name)) }
+    }
+    override def toString: String = s"Scope($bindings,$parent)"
   }
 
 }
