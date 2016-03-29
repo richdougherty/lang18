@@ -48,7 +48,7 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
     astSimple ~ " + " ~ ast ~> Add
   }
   def call: Rule1[Call] = rule {
-    astSimple ~ "(" ~ zeroOrMore(ast).separatedBy(", ") ~ ")" ~> Call
+    astSimple ~ tup ~> Call
   }
 
   //// astSimple - ASTs that start with an unambiguous prefix ////
@@ -69,7 +69,9 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   def inr: Rule1[Inr] = rule {
     capture(oneOrMore(CharPredicate.Digit)) ~> ((digits: String) => Inr(Integer.parseInt(digits)))
   }
-  // str rule doesn't compile in this scope for some reason
+  def tup: Rule1[Tup] = rule {
+    "(" ~ zeroOrMore(ast).separatedBy(", ") ~ ")" ~> Tup
+  }
   def symbol: Rule1[Symbol] = rule {
     ident ~> Symbol
   }
@@ -85,7 +87,7 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
     "if " ~ ast ~ " " ~ block ~ " else " ~ block ~> Cond
   }
   def func: Rule1[Func] = rule {
-    "def " ~ ident ~ "(" ~ zeroOrMore(ident).separatedBy(", ") ~ ") " ~ block ~> Func
+    "def " ~ ident ~ tup ~ " " ~ block ~> Func
   }
 
   // Non-AST rules

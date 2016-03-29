@@ -31,20 +31,22 @@ final object Interpreter {
       scope.bindings += (name -> value)
       Value.Unt
     case Func(name, args, body) =>
-      val func = Value.Func(args, body)
+      val func = Value.Func(args, body, scope)
       scope.bindings += (name -> func)
       func
     case Call(lhs, args) =>
-      interpret0(lhs, scope) match {
-        case func: Value.Func =>
-          assert(args.length == func.args.length)
-          val callScope = scope.createChild
-          for ((arg, argName) <- args.zip(func.args)) {
-            val argValue = interpret0(arg, scope)
-            callScope.bindings += (argName -> argValue)
-          }
-          interpret0(func.body, callScope)
+      val func = interpret0(lhs, scope).asInstanceOf[Value.Func]
+      val argsValue = interpret0(args, scope).asInstanceOf[Value.Tup]
+      assert(argsValue.values.length == func.args.values.length)
+
+      val callScope = func.lexScope.createChild
+      for ((arg, argValue) <- func.args.values.zip(argsValue.values)) {
+        val argSymbol = arg.asInstanceOf[Symbol]
+        callScope.bindings += (argSymbol.name -> argValue)
       }
+      interpret0(func.body, callScope)
+    case Tup(values) =>
+      Value.Tup(values.map(interpret0(_, scope)))
     case Add(lhs, rhs) =>
       (interpret0(lhs, scope), interpret0(rhs, scope)) match {
         case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
@@ -60,17 +62,27 @@ final object Interpreter {
       Value.Str(value)
   }
 
+  // private def bind0(ast: AST, ast: AST, scope: Scope): Unit = ast match {
+  //   case Symbol(name) =>
+  //     assert(!scope.bindings.contains(name), s"Variable $name already bound")
+  //     val value = interpret0(rhs, scope)
+  //     scope.bindings += (name -> value)
+  //     Value.Unt
+  // }
 
   sealed trait Value
   object Value {
     final case object Unt extends Value
     final case class Inr(value: Int) extends Value
     final case class Str(value: String) extends Value
+    final case class Tup(values: immutable.Seq[Value]) extends Value
     final case class Bool(value: Boolean) extends Value
-    final case class Func(args: immutable.Seq[String], body: AST) extends Value
+    final case class Func(args: nz.rd.lang18.Tup, body: AST, lexScope: Scope) extends Value {
+      override def toString: String = s"Func($args, $body, <scope>)"
+    }
   }
 
-  private final case class Scope(bindings: mutable.Map[String,Value], parent: Option[Scope]) {
+  final case class Scope(bindings: mutable.Map[String,Value], parent: Option[Scope]) {
     def createChild: Scope = Scope(mutable.Map.empty, Some(this))
   }
 
