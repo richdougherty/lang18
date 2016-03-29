@@ -26,24 +26,21 @@ final object Interpreter {
         case Value.Bool(false) => interpret0(f, scope)
       }
     case AST.Var(name, rhs) =>
-      assert(!scope.bindings.contains(name), s"Variable $name already bound")
-      val value = interpret0(rhs, scope)
-      scope.bindings += (name -> value)
+      val (value, bindings) = bind(AST.Symbol(name), rhs, scope)
+      for (b <- bindings.keys) {
+        assert(!scope.bindings.contains(b), s"$b already bound")
+      }
+      scope.bindings ++= bindings
       Value.Unt
     case AST.Func(name, args, body) =>
       val func = Value.Func(args, body, scope)
       scope.bindings += (name -> func)
       func
-    case AST.Call(lhs, args) =>
-      val func = interpret0(lhs, scope).asInstanceOf[Value.Func]
-      val argsValue = interpret0(args, scope).asInstanceOf[Value.Tup]
-      assert(argsValue.values.length == func.args.values.length)
-
+    case call: AST.Call =>
+      val func = interpret0(call.lhs, scope).asInstanceOf[Value.Func]
+      val (argsValue, argsBindings) = bind(func.args, call.args, scope)
       val callScope = func.lexScope.createChild
-      for ((arg, argValue) <- func.args.values.zip(argsValue.values)) {
-        val argSymbol = arg.asInstanceOf[AST.Symbol]
-        callScope.bindings += (argSymbol.name -> argValue)
-      }
+      callScope.bindings ++= argsBindings
       interpret0(func.body, callScope)
     case AST.Tup(values) =>
       Value.Tup(values.map(interpret0(_, scope)))
@@ -62,13 +59,20 @@ final object Interpreter {
       Value.Str(value)
   }
 
-  // private def bind0(ast: AST, ast: AST, scope: Scope): Unit = ast match {
-  //   case Symbol(name) =>
-  //     assert(!scope.bindings.contains(name), s"Variable $name already bound")
-  //     val value = interpret0(rhs, scope)
-  //     scope.bindings += (name -> value)
-  //     Value.Unt
-  // }
+  private def bind(bindAst: AST, valueAst: AST, scope: Scope): (Value, mutable.Map[String,Value]) = {
+    val bindings = mutable.Map.empty[String,Value]
+    val value = bind0(bindAst, valueAst, scope.createChild, bindings)
+    (value, bindings)
+  }
+
+  private def bind0(bindAst: AST, valueAst: AST, evalScope: Scope, bindings: mutable.Map[String,Value]): Value = (bindAst, valueAst) match {
+    case (AST.Symbol(name), valueAst) =>
+      val value = interpret0(valueAst, evalScope)
+      bindings += (name -> value)
+      value
+    case (AST.Tup(bs), AST.Tup(vs)) =>
+      Value.Tup((bs zip vs).map { case (b, v) => bind0(b, v, evalScope, bindings) })
+  }
 
   sealed trait Value
   object Value {
