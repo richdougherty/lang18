@@ -1,11 +1,12 @@
 package nz.rd.lang18
 
 import org.parboiled2._
+import scala.collection.immutable
 
 class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   def program: Rule1[AST] = rule { multi ~ EOI }
   def multi: Rule1[Block] = rule {
-    zeroOrMore(ast).separatedBy("\n") ~> ((s: Seq[AST]) => Block(s.toList))
+    zeroOrMore(optional(ast)).separatedBy("\n") ~> ((s: immutable.Seq[Option[AST]]) => Block(s.flatten.toList))
   }
   def block: Rule1[AST] = rule {
     "{" ~
@@ -14,7 +15,7 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
     ) ~
     "}"
   }
-  def print: Rule1[Print] = rule { "print " ~ str ~> ((s: Str) => Print(s)) }
+  def print: Rule1[Print] = rule { "print " ~ ast ~> ((a: AST) => Print(a)) }
   def cond: Rule1[Cond] = rule {
     "if " ~ ast ~ " " ~ block ~ " else " ~ block ~> Cond
   }

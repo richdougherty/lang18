@@ -17,6 +17,11 @@ class ParseSpec extends FreeSpec with Matchers {
       val parse = parser.`var`.run()
       assert(parse === Success(Var("x", Inr(1))))
     }
+    "should handle empty lines" in {
+      val parser = new Parser("print 1\n\nprint 2\n\n")
+      val parse = parser.program.run()
+      assert(parse === Success(Block(List(Print(Inr(1)), Print(Inr(2))))))
+    }
     "should handle symbols" in {
       val parser = new Parser("x")
       val parse = parser.symbol.run()
