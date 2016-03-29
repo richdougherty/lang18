@@ -1,6 +1,6 @@
 package nz.rd.lang18
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 final object Interpreter {
 
@@ -30,6 +30,25 @@ final object Interpreter {
       val value = interpret0(rhs, scope)
       scope.bindings += (name -> value)
       Value.Unt
+    case Func(name, args, body) =>
+      val func = Value.Func(args, body)
+      scope.bindings += (name -> func)
+      func
+    case Call(lhs, args) =>
+      interpret0(lhs, scope) match {
+        case func: Value.Func =>
+          assert(args.length == func.args.length)
+          val callScope = scope.createChild
+          for ((arg, argName) <- args.zip(func.args)) {
+            val argValue = interpret0(arg, scope)
+            callScope.bindings += (argName -> argValue)
+          }
+          interpret0(func.body, callScope)
+      }
+    case Add(lhs, rhs) =>
+      (interpret0(lhs, scope), interpret0(rhs, scope)) match {
+        case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
+      }
     case Symbol(name) =>
       assert(scope.bindings.contains(name), s"Variable $name not declared")
       scope.bindings(name)
@@ -48,6 +67,7 @@ final object Interpreter {
     final case class Inr(value: Int) extends Value
     final case class Str(value: String) extends Value
     final case class Bool(value: Boolean) extends Value
+    final case class Func(args: immutable.Seq[String], body: AST) extends Value
   }
 
   private final case class Scope(bindings: mutable.Map[String,Value], parent: Option[Scope]) {
