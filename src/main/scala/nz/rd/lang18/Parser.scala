@@ -3,6 +3,8 @@ package nz.rd.lang18
 import org.parboiled2._
 import scala.collection.immutable
 
+import AST._
+
 class Parser(val input: ParserInput) extends org.parboiled2.Parser {
 
   // Entry point for a program

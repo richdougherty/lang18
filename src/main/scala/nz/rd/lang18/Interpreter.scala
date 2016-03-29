@@ -7,7 +7,7 @@ final object Interpreter {
   def interpret(ast: AST): Value = interpret0(ast, Scope(mutable.Map.empty, None))
 
   private def interpret0(ast: AST, scope: Scope): Value = ast match {
-    case Print(expr) =>
+    case AST.Print(expr) =>
       interpret0(expr, scope) match {
         case Value.Unt => println("()")
         case Value.Inr(value) => println(value)
@@ -15,50 +15,50 @@ final object Interpreter {
         case Value.Bool(value) => println(value)
       }
       Value.Unt
-    case Block(children: List[AST]) =>
+    case AST.Block(children: List[AST]) =>
       val blockScope = scope.createChild
       children.foldLeft[Value](Value.Unt) {
         case (_, child) => interpret0(child, blockScope)
       }
-    case Cond(c, t, f) =>
+    case AST.Cond(c, t, f) =>
       interpret0(c, scope) match {
         case Value.Bool(true) => interpret0(t, scope)
         case Value.Bool(false) => interpret0(f, scope)
       }
-    case Var(name, rhs) =>
+    case AST.Var(name, rhs) =>
       assert(!scope.bindings.contains(name), s"Variable $name already bound")
       val value = interpret0(rhs, scope)
       scope.bindings += (name -> value)
       Value.Unt
-    case Func(name, args, body) =>
+    case AST.Func(name, args, body) =>
       val func = Value.Func(args, body, scope)
       scope.bindings += (name -> func)
       func
-    case Call(lhs, args) =>
+    case AST.Call(lhs, args) =>
       val func = interpret0(lhs, scope).asInstanceOf[Value.Func]
       val argsValue = interpret0(args, scope).asInstanceOf[Value.Tup]
       assert(argsValue.values.length == func.args.values.length)
 
       val callScope = func.lexScope.createChild
       for ((arg, argValue) <- func.args.values.zip(argsValue.values)) {
-        val argSymbol = arg.asInstanceOf[Symbol]
+        val argSymbol = arg.asInstanceOf[AST.Symbol]
         callScope.bindings += (argSymbol.name -> argValue)
       }
       interpret0(func.body, callScope)
-    case Tup(values) =>
+    case AST.Tup(values) =>
       Value.Tup(values.map(interpret0(_, scope)))
-    case Add(lhs, rhs) =>
+    case AST.Add(lhs, rhs) =>
       (interpret0(lhs, scope), interpret0(rhs, scope)) match {
         case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
       }
-    case Symbol(name) =>
+    case AST.Symbol(name) =>
       assert(scope.bindings.contains(name), s"Variable $name not declared")
       scope.bindings(name)
-    case Inr(value) =>
+    case AST.Inr(value) =>
       Value.Inr(value)
-    case Bool(value) =>
+    case AST.Bool(value) =>
       Value.Bool(value)
-    case Str(value) =>
+    case AST.Str(value) =>
       Value.Str(value)
   }
 
@@ -77,7 +77,7 @@ final object Interpreter {
     final case class Str(value: String) extends Value
     final case class Tup(values: immutable.Seq[Value]) extends Value
     final case class Bool(value: Boolean) extends Value
-    final case class Func(args: nz.rd.lang18.Tup, body: AST, lexScope: Scope) extends Value {
+    final case class Func(args: AST.Tup, body: AST, lexScope: Scope) extends Value {
       override def toString: String = s"Func($args, $body, <scope>)"
     }
   }

@@ -4,6 +4,8 @@ import collection.mutable.Stack
 import org.scalatest._
 import scala.util.Success
 
+import AST._
+
 class ParseSpec extends FreeSpec with Matchers {
 
   "Parsing" - {
