@@ -39,8 +39,8 @@ final object Interpreter {
       val argsValue = bind(func.args, call.args, evalScope, BindMode.Val)
       val callScope = Scope(evalScope.bindings, Some(scope)) // Copy new bindings into new call scope
       interpret0(func.body, callScope)
-    case AST.Tup(values) =>
-      Value.Tup(values.map(interpret0(_, scope)))
+    case AST.Cons(head, tail) =>
+      Value.Cons(interpret0(head, scope), interpret0(tail, scope))
     case AST.Add(lhs, rhs) =>
       (interpret0(lhs, scope), interpret0(rhs, scope)) match {
         case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
@@ -88,9 +88,12 @@ final object Interpreter {
           assignToVar(scope.bindings(name))
       }
       value
-    case AST.Tup(bs) =>
-      val vs = valueAst.asInstanceOf[AST.Tup].values
-      Value.Tup((bs zip vs).map { case (b, v) => bind(b, v, scope, mode) })
+    case b: AST.Parens =>
+      val v = valueAst.asInstanceOf[AST.Parens]
+      Value.Parens(bind(b.child, v.child, scope, mode))
+    case b: AST.Cons =>
+      val v = valueAst.asInstanceOf[AST.Cons]
+      Value.Cons(bind(b.head, v.head, scope, mode), bind(b.tail, v.tail, scope, mode))
   }
 
   sealed trait BindMode
@@ -108,7 +111,9 @@ final object Interpreter {
     final case class Str(value: String) extends Value
     final case class Tup(values: immutable.Seq[Value]) extends Value
     final case class Bool(value: Boolean) extends Value
-    final case class Func(args: AST.Tup, body: AST, lexScope: Scope) extends Value {
+    final case class Cons(head: Value, tail: Value) extends Value
+    final case class Parens(child: Value) extends Value
+    final case class Func(args: AST, body: AST, lexScope: Scope) extends Value {
       override def toString: String = s"Func($args, $body, <scope>)"
     }
   }

@@ -9,74 +9,130 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
 
   // Entry point for a program
 
-  def program: Rule1[AST] = rule { multi ~ EOI }
+  def program: Rule1[AST] = rule { lines ~ EOI }
 
-  // Multi-line ASTs
+  def ast: Rule1[AST] = astIntrinsic
 
-  def multi: Rule1[Block] = rule {
-    zeroOrMore(optional(ast)).separatedBy("\n") ~> ((s: immutable.Seq[Option[AST]]) => Block(s.flatten.toList))
-  }
-  def block: Rule1[AST] = rule {
-    "{" ~
-    (
-      (" " ~ ast ~ " ") | ("\n" ~ multi ~ "\n")
-    ) ~
-    "}"
-  }
-  // AST
+  // INTRINSIC //
 
-  def ast: Rule1[AST] = astUnit
-
-  //// astUnit - ASTs that evaluate to unit so won't have any suffix ////
-
-  def astUnit: Rule1[AST] = rule {
-    print | astSuffix
-  }
+  def astIntrinsic: Rule1[AST] = rule { cond | print | func /* FIXME */ | astAssign }
 
   def print: Rule1[Print] = rule { "print " ~ ast ~> ((a: AST) => Print(a)) }
 
-  //// astSuffix - ASTs that begin with another AST ////
-
-  def astSuffix: Rule1[AST] = {
-    rule {
-      assign | add | call | astSimple
-    }
+  def cond: Rule1[Cond] = rule {
+    "if " ~ ast ~ " " ~ block ~ " else " ~ block ~> Cond
   }
+
+  def func: Rule1[Func] = rule {
+    "def " ~ ident ~ args ~ " " ~ block ~> Func
+  }
+
+  // ASSIGN //
+
+  def astAssign: Rule1[AST] = rule { assign | astComma }
 
   def assign: Rule1[Assign] = rule {
-    astSimple ~ " = " ~ ast ~> Assign
+    astComma ~ " = " ~ ast ~> Assign
   }
+
+  // LIST //
+
+  def astComma: Rule1[AST] = rule { cons | astModifier }
+
+  def cons: Rule1[Cons] = rule {
+    astModifier ~ ", " ~ ast ~> Cons
+  }
+
+  // MODIFIER //
+
+  def astModifier: Rule1[AST] = rule { `var` | astAnnotation }
+
+  def `var`: Rule1[Var] = rule {
+    "var " ~ astAnnotation ~> Var
+  }
+
+  // ANNOTATION //
+
+  def astAnnotation: Rule1[AST] = rule { annotation | astLogic }
+
+  def annotation: Rule1[Ann] = rule {
+    astLogic ~ ": " ~ astLogic ~> Ann
+  }
+
+  // LOGIC //
+
+  def astLogic: Rule1[AST] = astCompare
+
+  // COMPARE //
+
+  def astCompare: Rule1[AST] = astShift
+
+  // SHIFT //
+
+  def astShift: Rule1[AST] = astAdd
+
+  // ADD //
+
+  def astAdd: Rule1[AST] = rule { add | astMult }
+
   def add: Rule1[Add] = rule {
-    astSimple ~ " + " ~ ast ~> Add
-  }
+    astMult ~ " + " ~ ast ~> Add
+  } 
+
+  // MULT //
+
+  def astMult: Rule1[AST] = astUnary
+
+  // UNARY //
+
+  def astUnary: Rule1[AST] = astApplyAccess
+ 
+  // APPLY/ACCESS //
+
+  def astApplyAccess: Rule1[AST] = rule { call | args | astCombine }
+
   def call: Rule1[Call] = rule {
-    astSimple ~ tup ~> Call
+    astCombine ~ astCombine ~> Call
   }
 
-  //// astSimple - ASTs that start with an unambiguous prefix ////
-
-  def astSimple: Rule1[AST] = {
-
-    rule {
-      // Literals
-      str | inr | bool |
-      // Reserved words
-      block | func | cond | `var` |
-      // Symbol
-      symbol
-    }
+  def args: Rule1[AST] = rule {
+    astCombine | (" " ~ astCombine)
   }
+
+  // COMBINE //
+
+  def astCombine: Rule1[AST] = rule { parens | block | astPrimitive }
+
+  def parens: Rule1[AST] = rule {
+    "(" ~ ast ~ ")" ~> Parens
+  }
+
+  def block: Rule1[AST] = rule {
+    "{" ~
+    (
+      (" " ~ ast ~ " ") | ("\n" ~ lines ~ "\n")
+    ) ~
+    "}"
+  }
+
+  def lines: Rule1[Block] = rule {
+    zeroOrMore(optional(ast)).separatedBy("\n") ~> ((s: immutable.Seq[Option[AST]]) => Block(s.flatten.toList))
+  }
+
+  // PRIMITIVE //
+
+  def astPrimitive: Rule1[AST] = rule {
+    bool | inr | str | symbol
+  }
+
 
   def bool: Rule1[Bool] = rule { "true" ~ push(Bool(true)) | "false" ~ push(Bool(false)) }
   def inr: Rule1[Inr] = rule {
     capture(oneOrMore(CharPredicate.Digit)) ~> ((digits: String) => Inr(Integer.parseInt(digits)))
   }
-  def tup: Rule1[Tup] = rule {
-    "(" ~ zeroOrMore(ast).separatedBy(", ") ~ ")" ~> Tup
-  }
-  def symbol: Rule1[Symbol] = rule {
-    ident ~> Symbol
-  }
+  // def tup: Rule1[Tup] = rule {
+  //   "(" ~ zeroOrMore(ast).separatedBy(", ") ~ ")" ~> Tup
+  // }
 
   def str: Rule1[Str] = {
     def str0: Rule1[String] = rule { capture(zeroOrMore(CharPredicate.Alpha)) }
@@ -85,14 +141,8 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
     }
   }
 
-  def cond: Rule1[Cond] = rule {
-    "if " ~ ast ~ " " ~ block ~ " else " ~ block ~> Cond
-  }
-  def func: Rule1[Func] = rule {
-    "def " ~ ident ~ tup ~ " " ~ block ~> Func
-  }
-  def `var`: Rule1[Var] = rule {
-    "var " ~ astSimple ~> Var
+  def symbol: Rule1[Symbol] = rule {
+    ident ~> Symbol
   }
 
   // Non-AST rules
