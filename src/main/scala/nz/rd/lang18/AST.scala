@@ -7,7 +7,6 @@ final object AST {
   final case class Block(children: immutable.Seq[AST]) extends AST
   final case class Parens(child: AST) extends AST
   final case class Inr(value: Int) extends AST
-  final case class Bool(value: Boolean) extends AST
   final case class Str(value: String) extends AST
   final case class Cons(head: AST, tail: AST) extends AST
   final case object Unit extends AST

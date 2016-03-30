@@ -122,11 +122,10 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
   // PRIMITIVE //
 
   def astPrimitive: Rule1[AST] = rule {
-    bool | inr | str | symbol
+    inr | str | symbol
   }
 
 
-  def bool: Rule1[Bool] = rule { "true" ~ push(Bool(true)) | "false" ~ push(Bool(false)) }
   def inr: Rule1[Inr] = rule {
     capture(oneOrMore(CharPredicate.Digit)) ~> ((digits: String) => Inr(Integer.parseInt(digits)))
   }

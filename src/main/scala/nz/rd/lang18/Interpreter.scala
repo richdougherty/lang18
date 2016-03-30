@@ -5,7 +5,17 @@ import scala.collection.{immutable, mutable}
 
 final object Interpreter {
 
-  def interpret(ast: AST): Value = interpret0(ast, Scope(mutable.Map.empty, None))
+  def interpret(ast: AST): Value = interpret0(ast, createGlobalScope.createChild)
+
+  private def createGlobalScope: Scope = {
+    Scope(
+      mutable.Map(  
+        "true" -> Value.Bool(true),
+        "false" -> Value.Bool(false)
+      ),
+      None
+    )
+  }
 
   private def interpret0(ast: AST, scope: Scope): Value = ast match {
     case AST.Print(expr) =>
@@ -57,8 +67,6 @@ final object Interpreter {
       deref(optValue.get)
     case AST.Inr(value) =>
       Value.Inr(value)
-    case AST.Bool(value) =>
-      Value.Bool(value)
     case AST.Str(value) =>
       Value.Str(value)
   }

@@ -34,10 +34,10 @@ class ParseSpec extends FreeSpec with Matchers {
       val parse = parser.program.run()
       assert(parse === Success(Block(List(Print(Inr(1)), Print(Inr(2))))))
     }
-    "should handle boolean values" in {
+    "should handle boolean values as symbols" in {
       val parser = new Parser("true")
       val ast = parser.program.run().get
-      assert(ast === Block(List(Bool(true))))
+      assert(ast === Block(List(Symbol("true"))))
     }
     "should handle numbers" in {
       val parser = new Parser("1")
