@@ -2,7 +2,7 @@ package nz.rd.lang18
 
 import collection.mutable.Stack
 import org.scalatest._
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 class InterpreterSpec extends FreeSpec with Matchers {
 
@@ -30,6 +30,12 @@ class InterpreterSpec extends FreeSpec with Matchers {
     }
     "should handle functions" in {
       assert(interpret("def incr(x) { x + 1 }\nincr(0)") === Success(Interpreter.Value.Inr(1)))
+    }
+    "should handle assignment to typed var" in {
+      assert(interpret("var x: int = 1\nx") === Success(Interpreter.Value.Inr(1)))
+    }
+    "should handle incorrect assignment to typed var" in {
+      interpret("var x: bool = 1\nx") shouldBe a[Failure[_]]
     }
   }
 

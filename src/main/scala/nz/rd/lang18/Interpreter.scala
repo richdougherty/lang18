@@ -11,7 +11,9 @@ final object Interpreter {
     Scope(
       mutable.Map(  
         "true" -> Value.Bool(true),
-        "false" -> Value.Bool(false)
+        "false" -> Value.Bool(false),
+        "bool" -> Value.Type("bool", _.isInstanceOf[Value.Bool]),
+        "int" -> Value.Type("int", _.isInstanceOf[Value.Inr])
       ),
       None
     )
@@ -102,6 +104,14 @@ final object Interpreter {
     case b: AST.Cons =>
       val v = valueAst.asInstanceOf[AST.Cons]
       Value.Cons(bind(b.head, v.head, scope, mode), bind(b.tail, v.tail, scope, mode))
+    case AST.Ann(childBindAst, childTypeAst) =>
+      // FIXME: Should probably check type before binding it into the scope.
+      // For now, it's easier to bind the child then check the type on the
+      // returned value.
+      val childValue = bind(childBindAst, valueAst, scope, mode)
+      val childType = interpret0(childTypeAst, scope).asInstanceOf[Value.Type]
+      assert(childType.check(childValue), s"Value $childValue must be of type ${childType.name}")
+      childValue
   }
 
   sealed trait BindMode
@@ -124,6 +134,7 @@ final object Interpreter {
     final case class Func(args: AST, body: AST, lexScope: Scope) extends Value {
       override def toString: String = s"Func($args, $body, <scope>)"
     }
+    final case class Type(name: String, check: Value => Boolean) extends Value
   }
 
   final case class Scope(bindings: mutable.Map[String,Value], parent: Option[Scope]) {
