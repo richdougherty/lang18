@@ -37,6 +37,14 @@ class InterpreterSpec extends FreeSpec with Matchers {
     "should handle incorrect assignment to typed var" in {
       interpret("var x: bool = 1\nx") shouldBe a[Failure[_]]
     }
+    "should handle ints, bools, addition, equality, conditions and strings" in {
+      assert(interpret(
+        """|var x = 1
+           |var y = 2
+           |var b = (x + 1) == y
+           |if (b) { "equal" } else { "unequal" }""".stripMargin
+     ) === Success(Interpreter.Value.Str("equal")))
+    }
   }
 
 }

@@ -65,7 +65,15 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
 
   // COMPARE //
 
-  def astCompare: Rule1[AST] = astShift
+  def astCompare: Rule1[AST] = rule { equals | astShift }
+
+  def equals: Rule1[Cmp] = rule {
+    astShift ~ " " ~ cmpOp ~ " " ~ ast ~> ((lhs: AST, op: Cmp.Op, rhs: AST) => Cmp(lhs, op, rhs))
+  }
+
+  def cmpOp: Rule1[Cmp.Op] = rule {
+    "==" ~ push(Cmp.Op.Equals)
+  }
 
   // SHIFT //
 

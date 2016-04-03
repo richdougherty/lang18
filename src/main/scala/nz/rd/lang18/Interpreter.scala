@@ -28,6 +28,8 @@ final object Interpreter {
         case Value.Bool(value) => println(value)
       }
       Value.Unt
+    case AST.Parens(child) =>
+      interpret0(child, scope)
     case AST.Block(children: List[AST]) =>
       val blockScope = scope.createChild
       children.foldLeft[Value](Value.Unt) {
@@ -56,6 +58,12 @@ final object Interpreter {
     case AST.Add(lhs, rhs) =>
       (interpret0(lhs, scope), interpret0(rhs, scope)) match {
         case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
+      }
+    case AST.Cmp(lhs, op, rhs) =>
+      val l = interpret0(lhs, scope)
+      val r = interpret0(rhs, scope)
+      op match {
+        case AST.Cmp.Op.Equals => Value.Bool(l == r) // TODO: Think more about comparisons
       }
     case AST.Symbol(name) =>
       val optValue = scope.lookup(name)

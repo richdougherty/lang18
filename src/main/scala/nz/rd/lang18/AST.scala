@@ -18,5 +18,13 @@ final object AST {
   final case class Call(lhs: AST, args: AST) extends AST
   final case class Assign(lhs: AST, rhs: AST) extends AST
   final case class Add(lhs: AST, rhs: AST) extends AST
+  final case class Cmp(lhs: AST, op: Cmp.Op, rhs: AST) extends AST
+  object Cmp {
+    sealed trait Op
+    object Op {
+      final case object Equals extends Op
+    }
+  }
+
   final case class Ann(lhs: AST, rhs: AST) extends AST
 }
