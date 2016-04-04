@@ -45,6 +45,12 @@ class InterpreterSpec extends FreeSpec with Matchers {
            |if (b) { "equal" } else { "unequal" }""".stripMargin
      ) === Success(Interpreter.Value.Str("equal")))
     }
+    "should handle factorial" in {
+      assert(interpret(
+        """|def factorial(n) { if (n < 1) { 1 } else { factorial(n - 1) * n } }
+           |factorial(4)""".stripMargin
+     ) === Success(Interpreter.Value.Inr(24)))
+    }
   }
 
 }

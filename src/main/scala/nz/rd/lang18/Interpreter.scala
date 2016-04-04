@@ -55,15 +55,13 @@ final object Interpreter {
       interpret0(func.body, callScope)
     case AST.Cons(head, tail) =>
       Value.Cons(interpret0(head, scope), interpret0(tail, scope))
-    case AST.Add(lhs, rhs) =>
-      (interpret0(lhs, scope), interpret0(rhs, scope)) match {
-        case (Value.Inr(a), Value.Inr(b)) => Value.Inr(a + b)
-      }
-    case AST.Cmp(lhs, op, rhs) =>
-      val l = interpret0(lhs, scope)
-      val r = interpret0(rhs, scope)
-      op match {
-        case AST.Cmp.Op.Equals => Value.Bool(l == r) // TODO: Think more about comparisons
+    case AST.Bin(lhs, op, rhs) =>
+      (interpret0(lhs, scope), op, interpret0(rhs, scope)) match {
+        case (Value.Inr(a), AST.Bin.Op.Add, Value.Inr(b)) => Value.Inr(a + b)
+        case (Value.Inr(a), AST.Bin.Op.Sub, Value.Inr(b)) => Value.Inr(a - b)
+        case (Value.Inr(a), AST.Bin.Op.Mul, Value.Inr(b)) => Value.Inr(a * b)
+        case (Value.Inr(a), AST.Bin.Op.Equals, Value.Inr(b)) => Value.Bool(a == b)
+        case (Value.Inr(a), AST.Bin.Op.LessThan, Value.Inr(b)) => Value.Bool(a < b)
       }
     case AST.Symbol(name) =>
       val optValue = scope.lookup(name)

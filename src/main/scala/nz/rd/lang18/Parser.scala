@@ -67,12 +67,13 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
 
   def astCompare: Rule1[AST] = rule { equals | astShift }
 
-  def equals: Rule1[Cmp] = rule {
-    astShift ~ " " ~ cmpOp ~ " " ~ ast ~> ((lhs: AST, op: Cmp.Op, rhs: AST) => Cmp(lhs, op, rhs))
+  def equals: Rule1[Bin] = rule {
+    astShift ~ " " ~ cmpOp ~ " " ~ ast ~> ((lhs: AST, op: Bin.Op, rhs: AST) => Bin(lhs, op, rhs))
   }
 
-  def cmpOp: Rule1[Cmp.Op] = rule {
-    "==" ~ push(Cmp.Op.Equals)
+  def cmpOp: Rule1[Bin.Op] = rule {
+    ("==" ~ push(Bin.Op.Equals)) |
+    ("<" ~ push(Bin.Op.LessThan))
   }
 
   // SHIFT //
@@ -83,13 +84,28 @@ class Parser(val input: ParserInput) extends org.parboiled2.Parser {
 
   def astAdd: Rule1[AST] = rule { add | astMult }
 
-  def add: Rule1[Add] = rule {
-    astMult ~ " + " ~ ast ~> Add
-  } 
+  def add: Rule1[Bin] = rule {
+    astMult ~ " " ~ addOp ~ " " ~ ast ~> ((lhs: AST, op: Bin.Op, rhs: AST) => Bin(lhs, op, rhs))
+  }
+
+  def addOp: Rule1[Bin.Op] = rule {
+    ("+" ~ push(Bin.Op.Add)) |
+    ("-" ~ push(Bin.Op.Sub))
+  }
 
   // MULT //
 
-  def astMult: Rule1[AST] = astUnary
+  def astMult: Rule1[AST] = rule { mult | astUnary }
+
+  def mult: Rule1[Bin] = rule {
+    astUnary ~ " " ~ multOp ~ " " ~ ast ~> ((lhs: AST, op: Bin.Op, rhs: AST) => Bin(lhs, op, rhs))
+  }
+
+  def multOp: Rule1[Bin.Op] = rule {
+    ("*" ~ push(Bin.Op.Mul))
+  }
+
+
 
   // UNARY //
 
